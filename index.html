@@ -107,14 +107,24 @@
   .rcard{
     text-align:left;width:100%;background:var(--card);border:1px solid var(--line);
     border-radius:16px;padding:16px 16px 14px;box-shadow:var(--shadow);
-    display:block;transition:transform .1s ease;
+    display:block;transition:transform .1s ease;cursor:pointer;
   }
+  .rcard:focus-visible{outline:2px solid var(--herb);outline-offset:2px}
   .rcard:active{transform:scale(.99)}
   .rcard .top{border-top:2px solid var(--turmeric);width:34px;margin-bottom:11px;opacity:.85}
   .rcard h2{font-family:var(--serif);font-weight:600;font-size:20px;letter-spacing:-.01em;margin:0 0 6px}
   .rcard .meta{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.02em}
   .rcard .tags{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
   .tag{font-family:var(--mono);font-size:11px;color:var(--herb);border:1px solid color-mix(in srgb,var(--herb) 30%,var(--line));padding:3px 8px;border-radius:999px}
+  .source{
+    display:inline-flex;align-items:center;gap:5px;margin-top:11px;max-width:100%;
+    font-family:var(--mono);font-size:12px;color:var(--herb);text-decoration:none;
+  }
+  .source:hover .host,.source:focus-visible .host{text-decoration:underline}
+  .source svg{flex:0 0 auto;opacity:.85}
+  .source .host{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .detail-source{margin:4px 0 18px}
+  .detail-source .source{margin-top:0;font-size:13px}
 
   /* Empty state */
   .empty{text-align:center;padding:56px 20px;color:var(--ink-soft)}
@@ -351,6 +361,23 @@
   function allTags(){const s=new Set();recipes.forEach(r=>(r.tags||[]).forEach(t=>s.add(t)));return [...s].sort((a,b)=>a.localeCompare(b));}
   function byId(id){return recipes.find(r=>r.id===id);}
 
+  // Force a safe http(s) href; anything schemeless (or with an unsafe scheme) gets https:// prepended.
+  function normalizeUrl(u){
+    u=(u||"").trim();
+    if(!u) return "";
+    if(/^https?:\/\//i.test(u)) return u;
+    return "https://"+u.replace(/^\/+/,"");
+  }
+  // Short, readable label for a URL — the bare hostname (sans www) when we can parse one.
+  function sourceLabel(u){
+    try{ const h=new URL(normalizeUrl(u)).hostname.replace(/^www\./,""); return h||u.trim(); }
+    catch(e){ return (u||"").trim(); }
+  }
+  const LINK_SVG='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.4 1.4"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.4-1.4"/></svg>';
+  function sourceLinkHTML(u){
+    return `<a class="source" href="${esc(normalizeUrl(u))}" target="_blank" rel="noopener noreferrer">${LINK_SVG}<span class="host">${esc(sourceLabel(u))}</span></a>`;
+  }
+
   function toast(msg){
     toastEl.textContent=msg;toastEl.classList.add("show");
     clearTimeout(toast._t);toast._t=setTimeout(()=>toastEl.classList.remove("show"),2200);
@@ -419,16 +446,25 @@
       return (r.title+" "+(r.tags||[]).join(" ")+" "+(r.ingredients||[]).join(" ")).toLowerCase().includes(q);
     });
   }
-  function bindCards(){app.querySelectorAll(".rcard").forEach(c=>c.onclick=()=>go({name:"detail",id:c.getAttribute("data-id")}));}
+  function bindCards(){
+    app.querySelectorAll(".rcard").forEach(c=>{
+      const open=()=>go({name:"detail",id:c.getAttribute("data-id")});
+      c.onclick=open;
+      c.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } };
+    });
+    // let the source link work on its own without opening the card
+    app.querySelectorAll(".rcard .source").forEach(a=>a.onclick=e=>e.stopPropagation());
+  }
 
   function cardHTML(r){
     const n=(r.ingredients||[]).length;
-    return `<button class="rcard" data-id="${esc(r.id)}">
+    return `<div class="rcard" role="button" tabindex="0" data-id="${esc(r.id)}">
       <div class="top"></div>
       <h2>${esc(r.title)}</h2>
       <div class="meta">${r.servings?("SERVES "+esc(r.servings)+" · "):""}${n} ingredient${n===1?"":"s"}</div>
       ${(r.tags&&r.tags.length)?`<div class="tags">${r.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
-    </button>`;
+      ${r.source?`<div>${sourceLinkHTML(r.source)}</div>`:""}
+    </div>`;
   }
 
   function renderDetail(){
@@ -443,6 +479,7 @@
         </div>
         <h2 class="title">${esc(r.title)}</h2>
         ${(r.tags&&r.tags.length)?`<div class="subtags">${r.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
+        ${r.source?`<div class="detail-source">${sourceLinkHTML(r.source)}</div>`:""}
 
         <div class="scaler">
           <span class="label">Servings</span>
@@ -514,7 +551,7 @@
 
   function renderForm(){
     const editing = view.id? byId(view.id): null;
-    const r = editing || {title:"",servings:"",ingredients:[],steps:[],tags:[],notes:""};
+    const r = editing || {title:"",servings:"",ingredients:[],steps:[],tags:[],source:"",notes:""};
     app.innerHTML = `
       <div class="detail-head"><button class="btn btn-quiet" id="cancel">‹ Cancel</button></div>
       <h2 class="title" style="font-size:26px;margin-bottom:22px">${editing?"Edit recipe":"New recipe"}</h2>
@@ -548,6 +585,12 @@
       </div>
 
       <div class="field">
+        <label for="f-source">Source URL (optional)</label>
+        <input id="f-source" type="url" inputmode="url" value="${esc(r.source||"")}" placeholder="cooking.nytimes.com/recipes/...">
+        <div class="hint">Where the recipe came from. Shows as a link on the recipe — you can leave off the “https://”.</div>
+      </div>
+
+      <div class="field">
         <label for="f-notes">Notes (optional)</label>
         <textarea id="f-notes" style="min-height:70px" placeholder="Freezes well. Good with rice.">${esc(r.notes||"")}</textarea>
       </div>
@@ -570,6 +613,7 @@
         ingredients: splitLines(document.getElementById("f-ings").value),
         steps: splitSteps(document.getElementById("f-steps").value),
         tags: parseTags(document.getElementById("f-tags").value),
+        source: document.getElementById("f-source").value.trim(),
         notes: document.getElementById("f-notes").value.trim(),
         created: editing? editing.created : Date.now()
       };
@@ -590,6 +634,7 @@
       ingredients:["200g red lentils","1 onion, diced","2 cloves garlic, minced","1 tbsp grated ginger","1 tsp ground turmeric","1 tsp cumin","400ml coconut milk","600ml water","1½ tbsp oil","salt to taste","juice of ½ lemon"],
       steps:["Rinse the lentils until the water runs clear.","Heat the oil and fry the onion until soft and golden, about 6 minutes.","Add garlic, ginger and spices; cook 1 minute until fragrant.","Stir in lentils, coconut milk and water. Bring to a simmer.","Cook uncovered for 25 minutes, stirring now and then, until thick.","Season with salt and finish with lemon juice."],
       tags:["dinner","vegetarian","quick"],
+      source:"https://www.bbcgoodfood.com/recipes/red-lentil-dhal",
       notes:"Freezes well. Try the servings scaler above — the ingredient amounts recompute live.",
       created:Date.now()
     });
