@@ -123,7 +123,9 @@
   .source:hover .host,.source:focus-visible .host{text-decoration:underline}
   .source svg{flex:0 0 auto;opacity:.85}
   .source .host{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .detail-source{margin:4px 0 18px}
+  .sources{margin-top:11px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+  .sources .source{margin-top:0}
+  .detail-source{margin:4px 0 18px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
   .detail-source .source{margin-top:0;font-size:13px}
 
   /* Empty state */
@@ -463,7 +465,7 @@
       <h2>${esc(r.title)}</h2>
       <div class="meta">${r.servings?("SERVES "+esc(r.servings)+" · "):""}${n} ingredient${n===1?"":"s"}</div>
       ${(r.tags&&r.tags.length)?`<div class="tags">${r.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
-      ${r.source?`<div>${sourceLinkHTML(r.source)}</div>`:""}
+      ${(r.source||r.source2)?`<div class="sources">${[r.source,r.source2].filter(Boolean).map(sourceLinkHTML).join("")}</div>`:""}
     </div>`;
   }
 
@@ -479,7 +481,7 @@
         </div>
         <h2 class="title">${esc(r.title)}</h2>
         ${(r.tags&&r.tags.length)?`<div class="subtags">${r.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
-        ${r.source?`<div class="detail-source">${sourceLinkHTML(r.source)}</div>`:""}
+        ${(r.source||r.source2)?`<div class="detail-source">${[r.source,r.source2].filter(Boolean).map(sourceLinkHTML).join("")}</div>`:""}
 
         <div class="scaler">
           <span class="label">Servings</span>
@@ -551,7 +553,7 @@
 
   function renderForm(){
     const editing = view.id? byId(view.id): null;
-    const r = editing || {title:"",servings:"",ingredients:[],steps:[],tags:[],source:"",notes:""};
+    const r = editing || {title:"",servings:"",ingredients:[],steps:[],tags:[],source:"",source2:"",notes:""};
     app.innerHTML = `
       <div class="detail-head"><button class="btn btn-quiet" id="cancel">‹ Cancel</button></div>
       <h2 class="title" style="font-size:26px;margin-bottom:22px">${editing?"Edit recipe":"New recipe"}</h2>
@@ -591,6 +593,12 @@
       </div>
 
       <div class="field">
+        <label for="f-source2">Second URL (optional)</label>
+        <input id="f-source2" type="url" inputmode="url" value="${esc(r.source2||"")}" placeholder="youtube.com/watch?v=...">
+        <div class="hint">Another link — e.g. a video or a variation. Shows as a second link on the recipe.</div>
+      </div>
+
+      <div class="field">
         <label for="f-notes">Notes (optional)</label>
         <textarea id="f-notes" style="min-height:70px" placeholder="Freezes well. Good with rice.">${esc(r.notes||"")}</textarea>
       </div>
@@ -614,6 +622,7 @@
         steps: splitSteps(document.getElementById("f-steps").value),
         tags: parseTags(document.getElementById("f-tags").value),
         source: document.getElementById("f-source").value.trim(),
+        source2: document.getElementById("f-source2").value.trim(),
         notes: document.getElementById("f-notes").value.trim(),
         created: editing? editing.created : Date.now()
       };
