@@ -61,12 +61,13 @@
     padding:14px 0 12px;margin-bottom:16px;
   }
   header.app .row{max-width:720px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:12px}
-  .brand{display:flex;align-items:baseline;gap:8px;margin-right:auto;min-width:0}
+  .brand{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-right:auto;min-width:0}
   .brand h1{
-    font-family:var(--serif);font-weight:600;font-size:26px;letter-spacing:-.01em;
-    margin:0;white-space:nowrap;
+    font-family:var(--serif);font-weight:600;font-size:25px;letter-spacing:-.01em;
+    margin:0;white-space:nowrap;line-height:1.05;
   }
-  .brand .count{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.02em}
+  .brand .tagline{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.02em;line-height:1.2}
+  .brand .count{color:var(--muted)}
 
   /* Buttons */
   button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
@@ -242,7 +243,7 @@
   <div class="row">
     <div class="brand">
       <h1>Recipe Box</h1>
-      <span class="count" id="count"></span>
+      <div class="tagline">Your private recipe box<span class="count" id="count"></span></div>
     </div>
     <button class="btn btn-ghost btn-quiet" id="dataBtn" aria-label="Backup and restore">Backup</button>
   </div>
@@ -409,7 +410,7 @@
 
   /* ---------- rendering ---------- */
   function render(){
-    countEl.textContent = recipes.length ? recipes.length + (recipes.length===1?" recipe":" recipes") : "";
+    countEl.textContent = recipes.length ? " · " + recipes.length + (recipes.length===1?" recipe":" recipes") : "";
     fab.hidden = (view.name!=="list") || recipes.length===0;
     if(view.name==="list") renderList();
     else if(view.name==="detail") renderDetail();
@@ -520,7 +521,11 @@
 
         ${r.notes?`<div class="sec-label">Notes</div><div class="notecard">${esc(r.notes)}</div>`:""}
 
-        <div class="detail-actions">
+        <button class="btn btn-primary" id="share" style="width:100%;margin-top:30px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+          Share recipe
+        </button>
+        <div class="detail-actions" style="margin-top:10px">
           <button class="btn btn-ghost" id="edit">Edit</button>
           <button class="btn btn-danger" id="del">Delete</button>
         </div>
@@ -548,6 +553,7 @@
     drawIngs(1,false);
 
     document.getElementById("back").onclick=()=>go({name:"list"});
+    document.getElementById("share").onclick=()=>shareRecipe(r);
     document.getElementById("edit").onclick=()=>go({name:"form",id:r.id});
     document.getElementById("del").onclick=()=>{
       if(confirm("Delete “"+r.title+"”? This can't be undone.")){
@@ -756,11 +762,96 @@
     rd.readAsText(f);e.target.value="";
   };
 
+  /* ---------- share via link ---------- */
+  function b64urlFromBytes(bytes){
+    let bin="";const CH=0x8000;
+    for(let i=0;i<bytes.length;i+=CH) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));
+    return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  function bytesFromB64url(s){
+    s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";
+    const bin=atob(s),out=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out;
+  }
+  async function packRecipe(r){
+    const slim={v:1,t:r.title,s:r.servings||"",i:r.ingredients||[],m:r.steps||[],g:r.tags||[],n:r.notes||""};
+    const bytes=new TextEncoder().encode(JSON.stringify(slim));
+    if(typeof CompressionStream==="function"){
+      try{
+        const cs=new CompressionStream("gzip");
+        const buf=await new Response(new Blob([bytes]).stream().pipeThrough(cs)).arrayBuffer();
+        return "1"+b64urlFromBytes(new Uint8Array(buf));
+      }catch(e){/* fall through */}
+    }
+    return "0"+b64urlFromBytes(bytes);
+  }
+  async function unpackRecipe(payload){
+    const flag=payload.charAt(0);let bytes=bytesFromB64url(payload.slice(1));
+    if(flag==="1"){
+      if(typeof DecompressionStream!=="function") throw new Error("no-decompress");
+      const ds=new DecompressionStream("gzip");
+      const buf=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+      bytes=new Uint8Array(buf);
+    }
+    const o=JSON.parse(new TextDecoder().decode(bytes));
+    if(!o||!o.t) return null;
+    return {id:uid(),title:o.t,servings:o.s||"",ingredients:o.i||[],steps:o.m||[],tags:o.g||[],notes:o.n||"",created:Date.now()};
+  }
+  async function shareRecipe(r){
+    let url;
+    try{ url=location.origin+location.pathname+"#r="+await packRecipe(r); }
+    catch(e){ toast("Couldn't build the link"); return; }
+    if(url.length>7000) toast("Heads up: long recipe — some apps may trim the link");
+    if(navigator.share){
+      try{ await navigator.share({title:r.title,url:url}); return; }
+      catch(e){ if(e&&e.name==="AbortError") return; }
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(()=>toast("Link copied to clipboard"),()=>toast("Couldn't copy the link"));
+    } else toast("Sharing isn't available here");
+  }
+
+  function offerSharedRecipe(rec){
+    const existing=recipes.find(r=>normTitle(r.title)===normTitle(rec.title));
+    const nIng=(rec.ingredients||[]).length;
+    const bits=[nIng+" ingredient"+(nIng===1?"":"s")];
+    if(rec.tags&&rec.tags.length) bits.push(rec.tags.slice(0,3).join(", "));
+    const buttons=[];
+    if(existing){
+      buttons.push({kind:"new",title:"Replace my version",sub:"Overwrite the one you already have",onClick:()=>{
+        const i=recipes.indexOf(existing);rec.id=existing.id;recipes[i]=rec;save(recipes);toast("Recipe replaced");go({name:"detail",id:rec.id});}});
+      buttons.push({kind:"old",title:"Keep both",sub:"Add this as a separate copy",onClick:()=>{
+        recipes.unshift(rec);save(recipes);toast("Added a copy");go({name:"detail",id:rec.id});}});
+    }else{
+      buttons.push({kind:"new",title:"Add to my box",sub:bits.join(" · "),onClick:()=>{
+        recipes.unshift(rec);save(recipes);toast("Added to your box");go({name:"detail",id:rec.id});}});
+    }
+    showChoiceSheet({
+      title:"Add “"+rec.title+"”?",
+      sub: existing?"You already have a recipe with this name.":"Someone shared this recipe with you.",
+      cancelLabel:"Not now",
+      buttons:buttons
+    });
+  }
+  async function checkSharedLink(){
+    let raw=(location.hash.match(/[#&]r=([^&]+)/)||[])[1];
+    if(!raw) raw=new URLSearchParams(location.search).get("r");
+    if(!raw) return;
+    if(/%/.test(raw)){ try{ raw=decodeURIComponent(raw); }catch(e){} }
+    // scrub the link so a refresh doesn't re-ask
+    try{ history.replaceState(null,"",location.pathname); }catch(e){}
+    let rec=null;
+    try{ rec=await unpackRecipe(raw); }catch(e){ rec=null; }
+    if(rec) offerSharedRecipe(rec);
+    else toast("That shared link couldn't be read");
+  }
+
   /* ---------- nav ---------- */
   function go(v){view=v;render();}
   fab.onclick=()=>go({name:"form",id:null});
 
   render();
+  checkSharedLink();
   if(!storageOK) toast("Heads up: saving is blocked in this preview — it'll work once saved to your phone");
 })();
 </script>
