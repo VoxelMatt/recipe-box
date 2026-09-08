@@ -107,26 +107,14 @@
   .rcard{
     text-align:left;width:100%;background:var(--card);border:1px solid var(--line);
     border-radius:16px;padding:16px 16px 14px;box-shadow:var(--shadow);
-    display:block;transition:transform .1s ease;cursor:pointer;
+    display:block;transition:transform .1s ease;
   }
-  .rcard:focus-visible{outline:2px solid var(--herb);outline-offset:2px}
   .rcard:active{transform:scale(.99)}
   .rcard .top{border-top:2px solid var(--turmeric);width:34px;margin-bottom:11px;opacity:.85}
   .rcard h2{font-family:var(--serif);font-weight:600;font-size:20px;letter-spacing:-.01em;margin:0 0 6px}
   .rcard .meta{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.02em}
   .rcard .tags{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
   .tag{font-family:var(--mono);font-size:11px;color:var(--herb);border:1px solid color-mix(in srgb,var(--herb) 30%,var(--line));padding:3px 8px;border-radius:999px}
-  .source{
-    display:inline-flex;align-items:center;gap:5px;margin-top:11px;max-width:100%;
-    font-family:var(--mono);font-size:12px;color:var(--herb);text-decoration:none;
-  }
-  .source:hover .host,.source:focus-visible .host{text-decoration:underline}
-  .source svg{flex:0 0 auto;opacity:.85}
-  .source .host{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .sources{margin-top:11px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-  .sources .source{margin-top:0}
-  .detail-source{margin:4px 0 18px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-  .detail-source .source{margin-top:0;font-size:13px}
 
   /* Empty state */
   .empty{text-align:center;padding:56px 20px;color:var(--ink-soft)}
@@ -166,7 +154,7 @@
   ul.ings{list-style:none;margin:0;padding:0}
   ul.ings li{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);align-items:baseline}
   ul.ings li:last-child{border-bottom:0}
-  ul.ings .qty{font-family:var(--mono);font-weight:600;font-size:15px;color:var(--ink);flex:0 0 auto;transition:color .25s ease}
+  ul.ings .qty{font-family:var(--mono);font-weight:600;font-size:15px;color:var(--ink);flex:0 0 auto;min-width:56px;transition:color .25s ease}
   ul.ings .qty.flash{color:var(--turmeric)}
   ul.ings .name{color:var(--ink-soft)}
   ul.ings .noqty{color:var(--ink-soft)}
@@ -207,6 +195,36 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* Backup sheet */
+  .sheet-backdrop{
+    position:fixed;inset:0;background:rgba(20,23,15,.42);z-index:60;
+    opacity:0;pointer-events:none;transition:opacity .2s ease;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .sheet-backdrop.show{opacity:1;pointer-events:auto}
+  .sheet{
+    width:100%;max-width:520px;background:var(--card);
+    border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -8px 40px rgba(0,0,0,.2);
+    transform:translateY(100%);transition:transform .26s cubic-bezier(.2,.9,.3,1);
+  }
+  .sheet-backdrop.show .sheet{transform:translateY(0)}
+  .sheet .grip{width:38px;height:5px;border-radius:3px;background:var(--line);margin:6px auto 14px}
+  .sheet h3{font-family:var(--serif);font-weight:600;font-size:20px;margin:0 0 3px;text-align:center}
+  .sheet .sub{text-align:center;color:var(--muted);font-size:13px;margin:0 0 16px}
+  .sheet-opt{
+    display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    background:var(--paper);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-bottom:10px;transition:transform .08s ease,background .15s ease;
+  }
+  .sheet-opt:active{transform:scale(.985);background:var(--line)}
+  .sheet-opt .ic{width:40px;height:40px;border-radius:11px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--herb) 14%,transparent);color:var(--herb)}
+  .sheet-opt .tx{min-width:0}
+  .sheet-opt .tx b{display:block;font-size:15.5px;font-weight:600;color:var(--ink);letter-spacing:-.005em}
+  .sheet-opt .tx span{display:block;font-size:12.5px;color:var(--ink-soft);margin-top:1px}
+  .sheet-cancel{width:100%;min-height:46px;margin-top:4px;border-radius:14px;font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink-soft);background:transparent;border:1px solid var(--line)}
+  .sheet-cancel:active{background:var(--line)}
+
   .fab{
     position:fixed;right:calc(18px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));
     width:56px;height:56px;border-radius:18px;background:var(--herb);color:#fff;
@@ -238,6 +256,27 @@
 
 <div class="toast" id="toast"></div>
 <input type="file" id="importFile" accept="application/json,.json">
+
+<div class="sheet-backdrop" id="sheetBackdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Backup and restore">
+    <div class="grip"></div>
+    <h3>Backup &amp; restore</h3>
+    <p class="sub">Your recipes live on this device. Keep a copy safe.</p>
+    <button class="sheet-opt" id="optExport">
+      <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
+      <span class="tx"><b>Export a backup file</b><span>Save a .json file you can re-import later</span></span>
+    </button>
+    <button class="sheet-opt" id="optCopy">
+      <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
+      <span class="tx"><b>Copy backup to clipboard</b><span>Paste it into Notes or a message</span></span>
+    </button>
+    <button class="sheet-opt" id="optImport">
+      <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M8 13l4-4 4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg></span>
+      <span class="tx"><b>Import from a backup file</b><span>Add recipes from a saved .json file</span></span>
+    </button>
+    <button class="sheet-cancel" id="optCancel">Cancel</button>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -363,23 +402,6 @@
   function allTags(){const s=new Set();recipes.forEach(r=>(r.tags||[]).forEach(t=>s.add(t)));return [...s].sort((a,b)=>a.localeCompare(b));}
   function byId(id){return recipes.find(r=>r.id===id);}
 
-  // Force a safe http(s) href; anything schemeless (or with an unsafe scheme) gets https:// prepended.
-  function normalizeUrl(u){
-    u=(u||"").trim();
-    if(!u) return "";
-    if(/^https?:\/\//i.test(u)) return u;
-    return "https://"+u.replace(/^\/+/,"");
-  }
-  // Short, readable label for a URL — the bare hostname (sans www) when we can parse one.
-  function sourceLabel(u){
-    try{ const h=new URL(normalizeUrl(u)).hostname.replace(/^www\./,""); return h||u.trim(); }
-    catch(e){ return (u||"").trim(); }
-  }
-  const LINK_SVG='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.4 1.4"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.4-1.4"/></svg>';
-  function sourceLinkHTML(u){
-    return `<a class="source" href="${esc(normalizeUrl(u))}" target="_blank" rel="noopener noreferrer">${LINK_SVG}<span class="host">${esc(sourceLabel(u))}</span></a>`;
-  }
-
   function toast(msg){
     toastEl.textContent=msg;toastEl.classList.add("show");
     clearTimeout(toast._t);toast._t=setTimeout(()=>toastEl.classList.remove("show"),2200);
@@ -448,25 +470,16 @@
       return (r.title+" "+(r.tags||[]).join(" ")+" "+(r.ingredients||[]).join(" ")).toLowerCase().includes(q);
     });
   }
-  function bindCards(){
-    app.querySelectorAll(".rcard").forEach(c=>{
-      const open=()=>go({name:"detail",id:c.getAttribute("data-id")});
-      c.onclick=open;
-      c.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } };
-    });
-    // let the source link work on its own without opening the card
-    app.querySelectorAll(".rcard .source").forEach(a=>a.onclick=e=>e.stopPropagation());
-  }
+  function bindCards(){app.querySelectorAll(".rcard").forEach(c=>c.onclick=()=>go({name:"detail",id:c.getAttribute("data-id")}));}
 
   function cardHTML(r){
     const n=(r.ingredients||[]).length;
-    return `<div class="rcard" role="button" tabindex="0" data-id="${esc(r.id)}">
+    return `<button class="rcard" data-id="${esc(r.id)}">
       <div class="top"></div>
       <h2>${esc(r.title)}</h2>
       <div class="meta">${r.servings?("SERVES "+esc(r.servings)+" · "):""}${n} ingredient${n===1?"":"s"}</div>
       ${(r.tags&&r.tags.length)?`<div class="tags">${r.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
-      ${(r.source||r.source2)?`<div class="sources">${[r.source,r.source2].filter(Boolean).map(sourceLinkHTML).join("")}</div>`:""}
-    </div>`;
+    </button>`;
   }
 
   function renderDetail(){
@@ -481,7 +494,6 @@
         </div>
         <h2 class="title">${esc(r.title)}</h2>
         ${(r.tags&&r.tags.length)?`<div class="subtags">${r.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}
-        ${(r.source||r.source2)?`<div class="detail-source">${[r.source,r.source2].filter(Boolean).map(sourceLinkHTML).join("")}</div>`:""}
 
         <div class="scaler">
           <span class="label">Servings</span>
@@ -553,7 +565,7 @@
 
   function renderForm(){
     const editing = view.id? byId(view.id): null;
-    const r = editing || {title:"",servings:"",ingredients:[],steps:[],tags:[],source:"",source2:"",notes:""};
+    const r = editing || {title:"",servings:"",ingredients:[],steps:[],tags:[],notes:""};
     app.innerHTML = `
       <div class="detail-head"><button class="btn btn-quiet" id="cancel">‹ Cancel</button></div>
       <h2 class="title" style="font-size:26px;margin-bottom:22px">${editing?"Edit recipe":"New recipe"}</h2>
@@ -587,18 +599,6 @@
       </div>
 
       <div class="field">
-        <label for="f-source">Source URL (optional)</label>
-        <input id="f-source" type="url" inputmode="url" value="${esc(r.source||"")}" placeholder="cooking.nytimes.com/recipes/...">
-        <div class="hint">Where the recipe came from. Shows as a link on the recipe — you can leave off the “https://”.</div>
-      </div>
-
-      <div class="field">
-        <label for="f-source2">Second URL (optional)</label>
-        <input id="f-source2" type="url" inputmode="url" value="${esc(r.source2||"")}" placeholder="youtube.com/watch?v=...">
-        <div class="hint">Another link — e.g. a video or a variation. Shows as a second link on the recipe.</div>
-      </div>
-
-      <div class="field">
         <label for="f-notes">Notes (optional)</label>
         <textarea id="f-notes" style="min-height:70px" placeholder="Freezes well. Good with rice.">${esc(r.notes||"")}</textarea>
       </div>
@@ -621,8 +621,6 @@
         ingredients: splitLines(document.getElementById("f-ings").value),
         steps: splitSteps(document.getElementById("f-steps").value),
         tags: parseTags(document.getElementById("f-tags").value),
-        source: document.getElementById("f-source").value.trim(),
-        source2: document.getElementById("f-source2").value.trim(),
         notes: document.getElementById("f-notes").value.trim(),
         created: editing? editing.created : Date.now()
       };
@@ -643,7 +641,6 @@
       ingredients:["200g red lentils","1 onion, diced","2 cloves garlic, minced","1 tbsp grated ginger","1 tsp ground turmeric","1 tsp cumin","400ml coconut milk","600ml water","1½ tbsp oil","salt to taste","juice of ½ lemon"],
       steps:["Rinse the lentils until the water runs clear.","Heat the oil and fry the onion until soft and golden, about 6 minutes.","Add garlic, ginger and spices; cook 1 minute until fragrant.","Stir in lentils, coconut milk and water. Bring to a simmer.","Cook uncovered for 25 minutes, stirring now and then, until thick.","Season with salt and finish with lemon juice."],
       tags:["dinner","vegetarian","quick"],
-      source:"https://www.bbcgoodfood.com/recipes/red-lentil-dhal",
       notes:"Freezes well. Try the servings scaler above — the ingredient amounts recompute live.",
       created:Date.now()
     });
@@ -667,26 +664,91 @@
       else toast("Couldn't export here");
     }
   }
+  // Generic bottom-sheet with N choice buttons; each button closes the sheet then runs its handler.
+  function showChoiceSheet(cfg){
+    const bd=document.createElement("div");
+    bd.className="sheet-backdrop";
+    const sheet=document.createElement("div");
+    sheet.className="sheet";
+    sheet.setAttribute("role","dialog");sheet.setAttribute("aria-modal","true");
+    let html='<div class="grip"></div><h3>'+esc(cfg.title)+'</h3>';
+    if(cfg.sub) html+='<p class="sub">'+esc(cfg.sub)+'</p>';
+    (cfg.buttons||[]).forEach((b,i)=>{
+      const ic = b.kind==="new"
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M8 13l4-4 4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+      html+='<button class="sheet-opt" data-i="'+i+'"><span class="ic">'+ic+'</span><span class="tx"><b>'+esc(b.title)+'</b>'+(b.sub?'<span>'+esc(b.sub)+'</span>':'')+'</span></button>';
+    });
+    html+='<button class="sheet-cancel" data-cancel="1">'+esc(cfg.cancelLabel||"Cancel")+'</button>';
+    sheet.innerHTML=html;
+    bd.appendChild(sheet);document.body.appendChild(bd);
+    requestAnimationFrame(()=>bd.classList.add("show"));
+    function close(after){ bd.classList.remove("show"); setTimeout(()=>{bd.remove(); if(after)after();},280); }
+    bd.addEventListener("click",e=>{
+      if(e.target===bd){ close(cfg.onCancel); return; }
+      const opt=e.target.closest(".sheet-opt");
+      if(opt){ const b=cfg.buttons[+opt.getAttribute("data-i")]; close(b&&b.onClick); return; }
+      if(e.target.closest("[data-cancel]")) close(cfg.onCancel);
+    });
+  }
+
+  const normTitle=s=>(s==null?"":String(s)).trim().toLowerCase();
+
   function importData(list){
     if(!Array.isArray(list)){toast("That file isn't a recipe backup");return;}
-    let added=0;
-    list.forEach(x=>{
-      if(x && x.title){
-        if(!x.id) x.id=uid();
-        if(recipes.some(r=>r.id===x.id)) x.id=uid();
-        recipes.push(x);added++;
-      }
+    const valid=list.filter(x=>x&&x.title);
+    if(!valid.length){toast("No recipes found in that file");return;}
+
+    const fresh=[], conflicts=[];
+    valid.forEach(x=>{
+      const match=recipes.find(r=>r.id===x.id || normTitle(r.title)===normTitle(x.title));
+      if(match) conflicts.push({incoming:x, existing:match});
+      else fresh.push(x);
     });
-    save(recipes);toast(added+" recipe"+(added===1?"":"s")+" imported");render();
+
+    function addFresh(){
+      fresh.forEach(x=>{ if(!x.id) x.id=uid(); if(recipes.some(r=>r.id===x.id)) x.id=uid(); recipes.push(x); });
+    }
+
+    if(conflicts.length===0){
+      addFresh();save(recipes);
+      toast(fresh.length+" recipe"+(fresh.length===1?"":"s")+" imported");render();return;
+    }
+
+    const n=conflicts.length, extra=fresh.length;
+    const s=n===1?"":"s";
+    showChoiceSheet({
+      title:"Some recipes already exist",
+      sub:n+" recipe"+s+" in this backup match "+(n===1?"one":"ones")+" you already have"+(extra?", plus "+extra+" new one"+(extra===1?"":"s")+".":"."),
+      cancelLabel:"Cancel restore",
+      buttons:[
+        {kind:"old",title:"Keep my current versions",
+         sub:"Skip the "+n+" duplicate"+s+(extra?" · still add the "+extra+" new":""),
+         onClick:()=>{ addFresh();save(recipes);
+           toast(extra?(extra+" added, "+n+" kept as-is"):("Kept your "+n+" current recipe"+s)); render(); }},
+        {kind:"new",title:"Use the imported versions",
+         sub:"Replace the "+n+" match"+(n===1?"":"es")+(extra?" · add the "+extra+" new":""),
+         onClick:()=>{
+           conflicts.forEach(c=>{ const i=recipes.indexOf(c.existing); if(i>-1){ const inc=c.incoming; inc.id=c.existing.id; recipes[i]=inc; } });
+           addFresh();save(recipes);
+           toast("Imported version"+s+" applied"+(extra?", "+extra+" added":"")); render(); }}
+      ]
+    });
   }
-  function dataMenu(){
-    const opts=["Export a backup file","Copy backup to clipboard","Import from a backup file"];
-    const choice=prompt("Backup & restore\n\n1 — Export a backup file\n2 — Copy backup to clipboard\n3 — Import from a backup file\n\nEnter 1, 2 or 3:");
-    if(choice==="1") exportData();
-    else if(choice==="2"){ if(navigator.clipboard){navigator.clipboard.writeText(JSON.stringify(recipes,null,2)).then(()=>toast("Copied to clipboard"));} else toast("Clipboard not available"); }
-    else if(choice==="3") document.getElementById("importFile").click();
+  const backdrop=document.getElementById("sheetBackdrop");
+  function openSheet(){ backdrop.hidden=false; requestAnimationFrame(()=>backdrop.classList.add("show")); }
+  function closeSheet(){ backdrop.classList.remove("show"); setTimeout(()=>{backdrop.hidden=true;},280); }
+  function copyBackup(){
+    const data=JSON.stringify(recipes,null,2);
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(data).then(()=>toast("Copied to clipboard"),()=>toast("Couldn't copy here")); }
+    else toast("Clipboard not available here");
   }
-  document.getElementById("dataBtn").onclick=dataMenu;
+  document.getElementById("dataBtn").onclick=openSheet;
+  document.getElementById("optCancel").onclick=closeSheet;
+  backdrop.onclick=e=>{ if(e.target===backdrop) closeSheet(); };
+  document.getElementById("optExport").onclick=()=>{ closeSheet(); exportData(); };
+  document.getElementById("optCopy").onclick=()=>{ closeSheet(); copyBackup(); };
+  document.getElementById("optImport").onclick=()=>{ closeSheet(); document.getElementById("importFile").click(); };
   document.getElementById("importFile").onchange=e=>{
     const f=e.target.files[0];if(!f)return;
     const rd=new FileReader();
