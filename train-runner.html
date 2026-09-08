@@ -75,7 +75,7 @@ const sun = new THREE.DirectionalLight(0xfff3d6, 0.9);
 sun.position.set(6, 12, 4);
 scene.add(sun);
 
-const mat = c => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+const mat = c => new THREE.MeshPhongMaterial({ color: c, flatShading: true, shininess: 0, specular: 0x000000 });
 const M = {
   ground: mat(0x7cc35c), rail: mat(0x3c3a3a), sleeper: mat(0x8a6a44),
   loco: mat(0xf2a33a), cab: mat(0x3a5b7a), car: mat(0xdcb884),
@@ -246,7 +246,7 @@ function update(dt) {
 
   // speed & distance
   const targetSpeed = Math.min(T.maxSpeed, T.baseSpeed + carriages.length * T.speedPerCar + dist * T.speedPerMetre);
-  speed += (targetSpeed - speed) * Math.min(1, dt * 2);
+  if (targetSpeed > speed) speed += (targetSpeed - speed) * Math.min(1, dt * 2); // ratchet: never slows down
   const step = speed * dt;
   dist += step;
 
@@ -314,8 +314,9 @@ function update(dt) {
 }
 
 function updateCamera(dt) {
-  const t = Math.min(1, carriages.length / T.camFar);
-  const target = { y: 5 + 10 * t, z: 9 + 16 * t, lookZ: -14 + 9 * t };
+  // frame the whole train: camera sits behind the tail and climbs as the train grows
+  const L = carriages.length * T.spacing;
+  const target = { y: 6 + L * 0.6, z: 12 + L * 1.2, lookZ: -12 + L * 0.4 };
   const k = 1 - Math.exp(-dt * 2.5);
   cam.y += (target.y - cam.y) * k; cam.z += (target.z - cam.z) * k; cam.lookZ += (target.lookZ - cam.lookZ) * k;
   camera.position.set(locoX * 0.35, cam.y, cam.z);
