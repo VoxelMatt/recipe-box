@@ -6,6 +6,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Recipe Box</title>
+<meta name="description" content="Your private recipe box — a little cookbook that lives on your phone.">
+<!-- Link preview card (generic/branded; the same for every recipe, since the recipe itself
+     rides in the URL fragment that preview crawlers never see). Update the URLs below if your
+     GitHub repo isn't named "recipes". -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Recipe Box">
+<meta property="og:title" content="Recipe Box">
+<meta property="og:description" content="Your private recipe box — a little cookbook that lives on your phone.">
+<meta property="og:url" content="https://voxelmatt.github.io/recipes/">
+<meta property="og:image" content="https://voxelmatt.github.io/recipes/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Recipe Box">
+<meta name="twitter:description" content="Your private recipe box — a little cookbook that lives on your phone.">
+<meta name="twitter:image" content="https://voxelmatt.github.io/recipes/preview.png">
 <style>
   :root{
     --paper:#FBF8F1;
@@ -803,11 +819,12 @@
     catch(e){ toast("Couldn't build the link"); return; }
     if(url.length>7000) toast("Heads up: long recipe — some apps may trim the link");
     if(navigator.share){
-      try{ await navigator.share({title:r.title,url:url}); return; }
+      try{ await navigator.share({title:r.title, text:r.title, url:url}); return; }
       catch(e){ if(e&&e.name==="AbortError") return; }
     }
+    const combined=r.title+"\n"+url;
     if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(()=>toast("Link copied to clipboard"),()=>toast("Couldn't copy the link"));
+      navigator.clipboard.writeText(combined).then(()=>toast("Link copied to clipboard"),()=>toast("Couldn't copy the link"));
     } else toast("Sharing isn't available here");
   }
 
