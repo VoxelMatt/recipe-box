@@ -87,20 +87,25 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 600), M.ground);
 ground.rotation.x = -Math.PI / 2; ground.position.z = -150; scene.add(ground);
 
 // rails (static — loco stays at z=0, world scrolls toward +z)
-const railGeo = new THREE.BoxGeometry(0.16, 0.12, 320);
+const railGeo = new THREE.BoxGeometry(0.16, 0.12, 620);
 for (const x of T.lanes) for (const o of [-0.5, 0.5]) {
-  const r = new THREE.Mesh(railGeo, M.rail); r.position.set(x + o, 0.08, -130); scene.add(r);
+  const r = new THREE.Mesh(railGeo, M.rail); r.position.set(x + o, 0.08, -110); scene.add(r);
 }
 // sleepers (instanced, scrolled each frame)
-const SLEEP_GAP = 3, SLEEP_N = 110;
+const SLEEP_GAP = 3, SLEEP_N = 200;
 const sleepers = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.1, 0.45), M.sleeper, SLEEP_N * T.lanes.length);
 scene.add(sleepers);
-const tmpM = new THREE.Matrix4();
+const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), tmpS = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
+// per-sleeper jitter (x, z, yaw) so the pattern doesn't strobe at speed
+const jitter = Array.from({ length: SLEEP_N * T.lanes.length }, () => ({
+  x: (Math.random() - 0.5) * 0.3, z: (Math.random() - 0.5) * 1.2, r: (Math.random() - 0.5) * 0.12 }));
 function layoutSleepers(offset) {
   let i = 0;
   for (const x of T.lanes) for (let k = 0; k < SLEEP_N; k++) {
-    const z = 30 - ((k * SLEEP_GAP + offset) % (SLEEP_N * SLEEP_GAP));
-    tmpM.makeTranslation(x, 0.03, z); sleepers.setMatrixAt(i++, tmpM);
+    const j = jitter[i];
+    const z = -420 + ((k * SLEEP_GAP + j.z + offset) % (SLEEP_N * SLEEP_GAP));
+    tmpP.set(x + j.x, 0.03, z); tmpQ.setFromAxisAngle(UP, j.r);
+    tmpM.compose(tmpP, tmpQ, tmpS); sleepers.setMatrixAt(i++, tmpM);
   }
   sleepers.instanceMatrix.needsUpdate = true;
 }
