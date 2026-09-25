@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Recipes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FBF8F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14170F" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Recipe Box</title>
 <meta name="description" content="Your private recipe box — a little cookbook that lives on your phone.">
 <!-- Link preview card (generic/branded; the same for every recipe, since the recipe itself
@@ -870,6 +877,14 @@
   render();
   checkSharedLink();
   if(!storageOK) toast("Heads up: saving is blocked in this preview — it'll work once saved to your phone");
+
+  /* ---------- installable app ---------- */
+  // Ask the browser not to evict our data under storage pressure.
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  // Offline support once installed to the Home Screen.
+  if("serviceWorker" in navigator&&location.protocol.startsWith("http")){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  }
 })();
 </script>
 </body>
