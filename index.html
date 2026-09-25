@@ -188,9 +188,9 @@
   .sec-label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--turmeric);margin:26px 0 10px;display:flex;align-items:center;gap:10px}
   .sec-label::after{content:"";flex:1;height:1px;background:var(--line)}
   ul.ings{list-style:none;margin:0;padding:0}
-  ul.ings li{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  ul.ings li{padding:9px 0;border-bottom:1px solid var(--line)}
   ul.ings li:last-child{border-bottom:0}
-  ul.ings .qty{font-family:var(--mono);font-weight:600;font-size:15px;color:var(--ink);flex:0 0 auto;min-width:56px;transition:color .25s ease}
+  ul.ings .qty{font-weight:650;font-variant-numeric:tabular-nums;color:var(--ink);transition:color .25s ease}
   ul.ings .qty.flash{color:var(--turmeric)}
   ul.ings .name{color:var(--ink-soft)}
   ul.ings .noqty{color:var(--ink-soft)}
@@ -416,7 +416,7 @@
     return (neg?"-":"")+out;
   }
 
-  // returns {qty, name}  — qty is scaled display string ("" if none)
+  // returns {qty, sep, name} — qty is scaled display string ("" if none); sep keeps "200g" joined and "200 grams" spaced
   function scaleLine(line, factor){
     const trimmed = line.trim();
     const q = parseQty(trimmed);
@@ -424,8 +424,9 @@
     let qtyStr;
     if(q.kind==="range") qtyStr = fmt(q.lo*factor)+"–"+fmt(q.hi*factor);
     else qtyStr = fmt(q.value*factor);
-    const name = trimmed.slice(q.len).replace(/^[\s.]+/,"");
-    return {qty:qtyStr, name:name};
+    const rest = trimmed.slice(q.len);
+    const name = rest.replace(/^[\s.]+/,"");
+    return {qty:qtyStr, sep:/^[\s.]/.test(rest)?" ":"", name:name};
   }
 
   /* ---------- helpers ---------- */
@@ -579,9 +580,9 @@
     function drawIngs(factor, flash){
       if(!ingsEl) return;
       ingsEl.innerHTML = (r.ingredients||[]).map(line=>{
-        const {qty,name}=scaleLine(line, factor);
+        const {qty,sep,name}=scaleLine(line, factor);
         return qty
-          ? `<li><span class="qty${flash?" flash":""}">${esc(qty)}</span><span class="name">${esc(name)}</span></li>`
+          ? `<li><span class="qty${flash?" flash":""}">${esc(qty)}</span>${sep}<span class="name">${esc(name)}</span></li>`
           : `<li><span class="noqty">${esc(name)}</span></li>`;
       }).join("");
       if(flash) setTimeout(()=>ingsEl.querySelectorAll(".qty").forEach(q=>q.classList.remove("flash")),260);
